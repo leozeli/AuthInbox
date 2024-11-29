@@ -19,6 +19,20 @@ export interface Env {
 	GoogleAPIKey: string;
 	UseBark: string;
 }
+function previewRow(rawEmail: string, maxLength = 1000) {
+    // Extract the HTML body between <html>...</html>
+    const bodyMatch = rawEmail.match(/<body[^>]*>(.*?)<\/body>/is);
+    
+    if (!bodyMatch) return 'No content available'; // Handle missing body content
+    
+    let bodyContent = bodyMatch[1];
+    
+    // Strip HTML tags
+    const text = bodyContent.replace(/<\/?[^>]+(>|$)/g, "").trim();
+
+    // Trim and return the text
+    return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+}
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -71,28 +85,18 @@ export default {
 
 		try {
 			const { results } = await env.DB.prepare(
-				'SELECT from_org, to_addr, topic, code, created_at FROM code_mails ORDER BY created_at DESC'
+				'SELECT from_addr, to_addr, subject, raw ,created_at FROM raw_mails ORDER BY created_at DESC'
 			).all();
-
+			
 			let dataHtml = '';
+			let rowContent = '';
 			for (const row of results) {
-				const codeLinkParts = row.code.split(',');
-				let codeLinkContent;
-
-				if (codeLinkParts.length > 1) {
-					const [code, link] = codeLinkParts;
-					codeLinkContent = `${code}<br><a href="${link}" target="_blank">${row.topic}</a>`;
-				} else if (row.code.startsWith('http')) {
-					codeLinkContent = `<a href="${row.code}" target="_blank">${row.topic}</a>`;
-				} else {
-					codeLinkContent = row.code;
-				}
-
+				rowContent = previewRow(row.raw);
 				dataHtml += `<tr>
-                    <td>${row.from_org}</td>
+                    <td>${row.from_addr}</td>
                     <td>${row.to_addr}</td>
-                    <td>${row.topic}</td>
-                    <td>${codeLinkContent}</td>
+                    <td>${row.subject}</td>
+                    <td>${rowContent}</td>
                     <td>${row.created_at}</td>
                 </tr>`;
 			}
@@ -103,7 +107,7 @@ export default {
                         <th>From</th>
                         <th>To</th>
                         <th>Topic</th>
-                        <th>Code/Link</th>
+                        <th>Content</th>
                         <th>Receive Time (GMT)</th>
                     </tr>
                 `)
