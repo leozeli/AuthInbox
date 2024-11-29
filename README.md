@@ -243,3 +243,4 @@ This project is licensed under the [MIT License](LICENSE).
 - [ ] **More Notification Methods**: Support additional notification methods such as email, Slack, etc.
 
 ---
+add
